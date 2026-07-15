@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 98.5%;
+    --mokka-coffee: 30 50% 25%;
+  }
+
+  body {
+    @apply bg-background text-gray-800;
+  }
+}
