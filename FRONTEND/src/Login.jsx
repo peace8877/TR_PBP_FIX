@@ -40,15 +40,16 @@ const Login = () => {
       localStorage.setItem(
         "auth",
         JSON.stringify({
+          id: data.user.id, // TAMBAHKAN INI (Pastikan data.user.id ada dari API)
           username: data.user.name,
-          role: data.user.role, 
+          role: data.user.role,
         })
       );
 
       // Pengalihan halaman berdasarkan role pengguna di database
-      if (data.user.role === "admin") {
+      if (data.user.role === "Admin") {
         navigate("/dashboard");
-      } else if (data.user.role === "cashier") {
+      } else if (data.user.role === "Kasir") {
         navigate("/cashier");
       } else {
         setError("Akses ditolak: Role tidak dikenali.");

@@ -39,38 +39,40 @@ const DashboardPage = () => {
             </div>
 
             {/* Mobile Drawer */}
-            {drawerOpen ? (
-              <div className="lg:hidden fixed inset-0 z-50">
-                <div
-                  className="absolute inset-0 bg-black/30"
-                  onClick={() => setDrawerOpen(false)}
-                />
-                <div className="absolute left-4 top-4 right-4 bottom-4">
-                  <div className="h-full overflow-hidden">
-                    <div className="h-full">
-                      <div className="bg-mokkaCream/70 backdrop-blur h-full rounded-3xl border border-white/60 p-3 shadow-lg flex flex-col">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="font-extrabold text-mokkaDark">
-                            Caffe Moka
-                          </p>
-                          <button
-                            type="button"
-                            className="h-10 w-10 rounded-3xl bg-white border border-white/70 shadow-soft flex items-center justify-center"
-                            onClick={() => setDrawerOpen(false)}
-                            aria-label="Close drawer"
-                          >
-                            <RxCross2 className="text-mokkaCoffee text-xl" />
-                          </button>
-                        </div>
-                        <div className="flex-1 overflow-auto">
-                          <Sidebar onLogout={handleLogout} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+             {drawerOpen ? (
+  <div className="lg:hidden fixed inset-0 z-50 flex">
+    {/* Backdrop gelap transparan di latar belakang */}
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
+      onClick={() => setDrawerOpen(false)}
+    />
+    
+    {/* Container Drawer (Menempel penuh di kiri, lebar pas, isi tidak meluber) */}
+    <div className="relative h-full w-72 max-w-[80vw] bg-mokkaCream/95 backdrop-blur border-r border-white/60 p-5 shadow-2xl flex flex-col animate-slide-in">
+      
+      {/* Header bagian dalam drawer */}
+      <div className="flex items-center justify-between mb-6 shrink-0">
+        <span className="font-extrabold text-xl text-mokkaDark tracking-wider">
+          POSTI
+        </span>
+        <button
+          type="button"
+          className="h-10 w-10 rounded-full bg-white border border-gray-100 shadow-soft flex items-center justify-center active:scale-95 transition"
+          onClick={() => setDrawerOpen(false)}
+          aria-label="Close drawer"
+        >
+          <RxCross2 className="text-mokkaCoffee text-lg font-bold" />
+        </button>
+      </div>
+
+      {/* Konten Utama: Sidebar Admin Anda */}
+      <div className="flex-1 overflow-y-auto pr-1">
+        <Sidebar onLogout={handleLogout} />
+      </div>
+      
+    </div>
+  </div>
+) : null}
 
             {/* Topbar */}
             <Topbar />

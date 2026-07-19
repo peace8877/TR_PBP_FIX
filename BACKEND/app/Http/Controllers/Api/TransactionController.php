@@ -12,7 +12,12 @@ use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
-    // ... method index() tetap sama ...
+    public function index()
+{
+    // Menggunakan latest() untuk mengurutkan berdasarkan transaksi terbaru
+    $transactions = Transaction::with(['user', 'details'])->latest()->get();
+    return response()->json($transactions);
+}
 
     public function store(Request $request)
     {

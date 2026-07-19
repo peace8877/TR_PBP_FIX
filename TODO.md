@@ -1,16 +1,7 @@
-- [ ] Add Laravel Products CRUD API
-  - [ ] Create migration `products`
-  - [ ] Create model `Product`
-  - [ ] Create controller `ProductsController`
-  - [ ] Add routes in `BACKEND/routes/api.php` for `/api/products`
-- [ ] Integrate React `FRONTEND/src/ProductsPage.jsx` with backend CRUD
-  - [ ] Fetch products from `GET /api/products` on mount
-  - [ ] Implement create via `POST /api/products`
-  - [ ] Implement update via `PUT/PATCH /api/products/:id`
-  - [ ] Implement delete via `DELETE /api/products/:id`
-- [ ] Ensure CORS works with dev origins (review `BACKEND/config/cors.php`)
-- [ ] Run tests / manual check
-  - [ ] `php artisan migrate`
-  - [ ] `php artisan serve`
-  - [ ] `npm run dev` in FRONTEND
-  - [ ] Verify CRUD flows
+# TODO
+
+- [ ] Fix blank putih setelah login dengan menormalkan role di `FRONTEND/src/components/RequireRole.jsx` (Admin/Kasir ↔ admin/cashier)
+- [x] Jalankan frontend (npm install/dev bila perlu) dan test login Admin & Kasir
+- [ ] Pastikan tidak ada blank putih / redirect loop
+
+
