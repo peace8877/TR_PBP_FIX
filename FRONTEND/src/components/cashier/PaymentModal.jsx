@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-
+import axios from "axios";
 
 function PaymentModal({
   open,
@@ -7,12 +7,11 @@ function PaymentModal({
   invoice,
   total,
   onConfirm,
+  cartItems,
 }) {
   const [paymentMethod, setPaymentMethod] = useState("Tunai");
   const [paid, setPaid] = useState(0);
-
-  // State resets handled by modal remount (see wrapper key)
-
+  const [loading, setLoading] = useState(false);
 
   const change = useMemo(() => {
     if (paymentMethod !== "Tunai") return 0;
@@ -20,6 +19,50 @@ function PaymentModal({
     const diff = tPaid - total;
     return diff > 0 ? diff : 0;
   }, [paid, paymentMethod, total]);
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    const token = localStorage.getItem("token");
+    const authString = localStorage.getItem("auth");
+    const authData = authString ? JSON.parse(authString) : null;
+    const userId = authData?.id ?? authData?.user_id ?? authData?.user?.id;
+
+    if (!userId) {
+      alert("Error: user_id tidak ditemukan.");
+      setLoading(false);
+      return;
+    }
+
+    const formattedItems = cartItems.map((item) => ({
+        menu_id: Number(item.productId), 
+        quantity: Number(item.qty) 
+    }));
+
+    try {
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/transactions",
+        {
+          user_id: userId,
+          payment_method: paymentMethod,
+          tax_amount: 0, 
+          items: formattedItems,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
+        }
+      );
+
+      // Panggil onConfirm hanya setelah API sukses
+      if (response.status === 201 || response.status === 200) {
+        onConfirm(paid, change); // Kirim data ke dashboard
+        onClose();
+      }
+    } catch (error) {
+        alert("Gagal: " + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -81,9 +124,15 @@ function PaymentModal({
             <label className="text-xs font-bold text-gray-600">Uang bayar</label>
             <input
               type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
               min={0}
-              value={paid}
-              onChange={(e) => setPaid(Number(e.target.value))}
+              value={paid === 0 ? "" : paid}
+              onChange={(e) => {
+                const rawValue = e.target.value;
+                const cleanValue = rawValue.replace(/^0+/, '');
+                setPaid(cleanValue === "" ? 0 : Number(cleanValue));
+              }}
               className="mt-2 w-full h-12 rounded-2xl bg-white/80 border border-white/70 px-4 outline-none focus:ring-2 focus:ring-mokkaCoffee/30"
               disabled={paymentMethod !== "Tunai"}
               placeholder={paymentMethod !== "Tunai" ? "Tidak diperlukan" : "Masukkan nominal"}
@@ -107,13 +156,11 @@ function PaymentModal({
             </button>
             <button
               type="button"
-              onClick={() =>
-                onConfirm({ paymentMethod, paid: Number(paid) || 0, change, total })
-              }
+              onClick={handleConfirm}
+              disabled={loading || (paymentMethod === "Tunai" && (Number(paid) || 0) < total)}
               className="h-12 px-5 rounded-2xl bg-mokkaCoffee text-white hover:bg-mokkaCoffee/90 font-extrabold"
-              disabled={paymentMethod === "Tunai" && (Number(paid) || 0) < total}
             >
-              Konfirmasi Pembayaran
+              {loading ? "Memproses..." : "Konfirmasi Pembayaran"}
             </button>
           </div>
         </div>
@@ -123,4 +170,3 @@ function PaymentModal({
 }
 
 export default PaymentModal;
-

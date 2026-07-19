@@ -9,50 +9,71 @@ use Illuminate\Support\Facades\Hash; // <-- IMPORT FACADE HASH
 
 class AuthController extends Controller
 {
-    /**
-     * Menangani proses login user.
-     */
-    public function login(Request $request)
+   public function login(Request $request)
+{
+    // ... (validasi)
+    $user = User::where('name', $request->name)->first();
+
+    $user->update([
+        'status' => 'Aktif',
+        'last_active_at' => now(),
+    ]);
+    
+    $token = $user->createToken('auth_token')->plainTextToken;
+    return response()->json(['token' => $token, 'user' => $user], 200);
+}
+
+public function logout(Request $request)
+{
+    $user = $request->user();
+    
+    $user->update([
+        'status' => 'Non aktif', // Pastikan pakai tanda hubung
+        'last_inactive_at' => now(),
+    ]);
+
+    $user->currentAccessToken()->delete();
+    return response()->json(['message' => 'Berhasil logout']);
+}
+
+    public function register(Request $request)
     {
-        // Validasi input form dari React
+        // 1. Validasi WAJIB menyertakan email dan role agar tidak error
         $request->validate([
-            'name'     => 'required|string',
-            'password' => 'required|string',
+            'name'     => 'required|string|max:255|unique:users,name',
+            'email'    => 'required|string|email|max:255|unique:users,email', // Email harus ada
+            'password' => 'required|string|min:8',
+            'role'     => 'required|string|in:Admin,Kasir',                // Role harus ada
         ]);
 
-        // Mencari pengguna berdasarkan kolom name di database
-        $user = User::where('name', $request->name)->first();
+        // 2. Logika pembuatan user
+        $user = User::create([
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'password' => Hash::make($request->password),
+            'role'     => $request->role, // Mengambil role dari request (bisa admin atau cashier)
+            'status'   => 'Aktif',        // Default status
+        ]);
 
-        // Validasi keberadaan user dan kecocokan password terenkripsi
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'message' => 'Username atau password yang Anda masukkan salah.'
-            ], 401);
-        }
-
-        // Membuat token akses baru via Laravel Sanctum
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        // Mengirim respon sukses beserta data user dan token
         return response()->json([
-            'message' => 'Login berhasil',
-            'token'   => $token,
-            'user'    => [
-                'name' => $user->name,
-                'role' => $user->role, // Mengambil data role (admin/cashier)
-            ]
-        ], 200);
+            'message' => 'User berhasil didaftarkan sebagai ' . $request->role,
+            'user'    => $user
+        ], 201);
     }
 
-    /**
-     * Menangani proses logout (Opsional - untuk menghapus token).
-     */
-    public function logout(Request $request)
+    
+    public function profile(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
-
+        $user = $request->user();
         return response()->json([
-            'message' => 'Berhasil logout'
+            'id'               => $user->id,
+            'name'             => $user->name,
+            'email'            => $user->email,
+            'role'             => $user->role,
+            'status'           => $user->status,
+            'last_active_at'   => $user->last_active_at,
+            'last_inactive_at' => $user->last_inactive_at,
         ], 200);
-    }
 }
+}
+

@@ -12,7 +12,7 @@ import logo from "../../assets/logo.png";
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/cashier" },
-  { label: "Transaksi", icon: ShoppingBag, to: "/cashier/transactions" },
+ 
   {
     label: "Riwayat Transaksi",
     icon: History,
