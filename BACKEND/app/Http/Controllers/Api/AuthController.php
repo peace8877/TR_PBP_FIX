@@ -11,8 +11,28 @@ class AuthController extends Controller
 {
    public function login(Request $request)
 {
-    // ... (validasi)
+    // Validasi input
+    $request->validate([
+        'name'     => 'required|string',
+        'password' => 'required|string',
+    ]);
+
+    // Cari user berdasarkan name
     $user = User::where('name', $request->name)->first();
+
+    // Cek apakah user ditemukan
+    if (!$user) {
+        return response()->json([
+            'message' => 'Username atau password salah.'
+        ], 401);
+    }
+
+    // Verifikasi password
+    if (!Hash::check($request->password, $user->password)) {
+        return response()->json([
+            'message' => 'Username atau password salah.'
+        ], 401);
+    }
 
     $user->update([
         'status' => 'Aktif',

@@ -31,11 +31,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('products/{product}', [MenuController::class, 'destroy']);
 
         Route::get('/settings', [SettingController::class, 'index']);
-    Route::post('/settings', [SettingController::class, 'store']);
+        Route::post('/settings', [SettingController::class, 'store']);
     });
 
     // 2. Khusus Kasir (Proses checkout transaksi)
-    Route::middleware('role:Kasir')->group(function () {
+        Route::middleware('role:Kasir')->group(function () {
         Route::post('/transactions', [TransactionController::class, 'store']);
     });
 
@@ -48,7 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/attendances', [AttendanceController::class, 'index']); 
         Route::post('/attendances/check-in', [AttendanceController::class, 'checkIn']); 
         Route::post('/attendances/check-out', [AttendanceController::class, 'checkOut']); 
-        Route::apiResource('products', MenuController::class);
+        Route::apiResource('products', MenuController::class)->parameters(['products' => 'menu']);;
         Route::apiResource('categories', CategoryController::class);
 
 

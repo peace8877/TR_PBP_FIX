@@ -43,6 +43,8 @@ export function CashierTransactionsProvider({ children }) {
         totals: {
           grandTotal: Number(t.total_amount || 0),
         },
+        // Simpan data mentah untuk digunakan modal detail
+        _raw: t,
       };
     });
 

@@ -6,18 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Models\Menu;
-use App\Models\Ingredient; // <-- Pastikan ini di-import
+use App\Models\Ingredient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
     public function index()
-{
-    // Menggunakan latest() untuk mengurutkan berdasarkan transaksi terbaru
-    $transactions = Transaction::with(['user', 'details'])->latest()->get();
-    return response()->json($transactions);
-}
+    {
+        $transactions = Transaction::with(['user', 'details.menu'])->latest()->get();
+        return response()->json([
+            'status' => 'success',
+            'data' => $transactions
+        ], 200);
+    }
 
     public function store(Request $request)
     {
@@ -40,30 +42,23 @@ class TransactionController extends Controller
                 // Ambil data menu beserta bahan baku yang dibutuhkan
                 $menu = Menu::with('ingredients')->findOrFail($item['menu_id']);
                 
+                // 1. Cek Ketersediaan Menu (Gunakan Exception agar mentrigger Rollback)
                 if (!$menu->is_available) {
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => "Menu '{$menu->name}' saat ini sedang tidak tersedia."
-                    ], 422);
+                    throw new \Exception("Menu '{$menu->name}' saat ini sedang tidak tersedia.");
                 }
 
-                // --- LOGIKA CEK DAN POTONG STOK BAHAN BAKU ---
+                // 2. LOGIKA CEK DAN POTONG STOK BAHAN BAKU
                 foreach ($menu->ingredients as $ingredient) {
-                    // Hitung total bahan yang dibutuhkan untuk jumlah pesanan ini
                     $totalNeeded = $ingredient->pivot->quantity_needed * $item['quantity'];
 
-                    // Cek apakah stok di dapur mencukupi
+                    // Cek apakah stok cukup (Gunakan Exception agar mentrigger Rollback)
                     if ($ingredient->stock_quantity < $totalNeeded) {
-                        return response()->json([
-                            'status' => 'error',
-                            'message' => "Stok bahan baku '{$ingredient->name}' tidak mencukupi untuk membuat menu '{$menu->name}'."
-                        ], 422);
+                        throw new \Exception("Stok bahan baku '{$ingredient->name}' tidak mencukupi untuk membuat menu '{$menu->name}'.");
                     }
 
-                    // Kurangi stok bahan baku secara langsung
+                    // Kurangi stok bahan baku
                     $ingredient->decrement('stock_quantity', $totalNeeded);
                 }
-                // ----------------------------------------------
 
                 $itemSubtotal = $menu->price * $item['quantity'];
                 $subtotal += $itemSubtotal;
@@ -94,6 +89,7 @@ class TransactionController extends Controller
                 $transaction->details()->create($detail);
             }
 
+            // Jika semua lancar, simpan permanen ke database
             DB::commit();
 
             return response()->json([
@@ -103,15 +99,15 @@ class TransactionController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
+            // Batalkan semua query / potongan stok yang sempat terjadi jika ada error
             DB::rollBack();
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal memproses transaksi: ' . $e->getMessage()
-            ], 500);
+                'message' => $e->getMessage()
+            ], 422); // Gunakan 422 Unprocessable Entity
         }
     }
-
-    // ... method show() tetap sama ...
 
     public function show($id)
     {

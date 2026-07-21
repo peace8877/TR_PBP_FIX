@@ -13,13 +13,14 @@ import {
   AlertCircle 
 } from "lucide-react";
 
-// Taruh URL API secara global di sini agar semua fungsi fetch mengarah ke backend yang sama
+// URL API
 const API_BASE_URL = "http://127.0.0.1:8000/api"; 
 
 export default function ProductsPage() {
   // --- States ---
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [ingredients, setIngredients] = useState([]); // 👈 State Baru untuk Ingredients
   const [loading, setLoading] = useState(true);
   
   // Filter & Search States
@@ -41,8 +42,8 @@ export default function ProductsPage() {
     id: null,
     name: "",
     category_id: "",
+    ingredients: [], 
     price: "",
-    stock: "",
     description: "",
     image: null,
     image_preview: null,
@@ -50,7 +51,7 @@ export default function ProductsPage() {
 
   const fileInputRef = useRef(null);
 
-  // 1. Deklarasikan Helper Header Terlebih Dahulu
+  // Helper Header Auth
   const getAuthHeaders = () => {
     try {
       const token = localStorage.getItem("token");
@@ -64,7 +65,7 @@ export default function ProductsPage() {
     }
   };
 
-  // 2. Baru Tulis Fungsi handleDelete di Bawahnya
+  // Delete Handler
   const handleDelete = async (id) => {
     if (!confirm("Apakah Anda yakin ingin menghapus produk ini?")) return;
 
@@ -92,10 +93,9 @@ export default function ProductsPage() {
     }
   };
 
-  // --- Helper: Mengonversi Nama File Gambar ke URL Storage Laravel ---
+  // Helper Image URL
   const getImageUrl = (imageName) => {
     if (!imageName) return "https://placehold.co/100x100?text=No+Image";
-    // Menghapus '/api' dari basis URL untuk mengarah ke root public Laravel
     const baseUrl = API_BASE_URL.replace("/api", "");
     return `${baseUrl}/storage/${imageName}`;
   };
@@ -105,18 +105,22 @@ export default function ProductsPage() {
     setLoading(true);
     try {
       const headers = getAuthHeaders();
-      const [prodRes, catRes] = await Promise.all([
+
+      // Fetch Products, Categories, & Ingredients secara bersamaan
+      const [prodRes, catRes, ingRes] = await Promise.all([
         fetch(`${API_BASE_URL}/products`, { headers }).then((res) => res.json()),
         fetch(`${API_BASE_URL}/categories`, { headers }).then((res) => res.json()),
+        fetch(`${API_BASE_URL}/ingredients`, { headers }).then((res) => res.json()),
       ]);
 
       const prodData = prodRes?.data ?? prodRes;
       const catData = catRes?.data ?? catRes;
+      const ingData = ingRes?.data ?? ingRes;
 
       setProducts(Array.isArray(prodData) ? prodData : []);
       setCategories(Array.isArray(catData) ? catData : []);
+      setIngredients(Array.isArray(ingData) ? ingData : []);
 
-      // Set default category_id untuk form dari data pertama jika tersedia
       if (Array.isArray(catData) && catData.length > 0) {
         setForm((f) => ({ ...f, category_id: String(catData[0].id) }));
       }
@@ -132,13 +136,12 @@ export default function ProductsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Toast Helper ---
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // --- Dropdown Options (MEMOIZED) ---
+  // Memoized Dropdowns
   const categoryFilterOptions = useMemo(() => {
     return [
       { id: "all", name: "Semua Kategori" },
@@ -150,7 +153,14 @@ export default function ProductsPage() {
     return categories.map((c) => ({ id: String(c.id), name: c.name }));
   }, [categories]);
 
-  // --- Filter & Sorting Logic ---
+  const ingredientFormOptions = useMemo(() => {
+    return ingredients.map((i) => ({ 
+      id: String(i.id), 
+      name: `${i.name} (Stok: ${i.stock_quantity} ${i.unit || 'pcs'})` 
+    }));
+  }, [ingredients]);
+
+  // Filter & Sorting Logic
   const filteredProducts = useMemo(() => {
     return products
       .filter((p) => {
@@ -163,9 +173,12 @@ export default function ProductsPage() {
         let valA = a[sortBy];
         let valB = b[sortBy];
 
-        if (sortBy === "price" || sortBy === "stock") {
+        if (sortBy === "price") {
           valA = Number(valA);
           valB = Number(valB);
+        } else if (sortBy === "stock") {
+          valA = Number(a.ingredients?.[0]?.stock_quantity ?? 0);
+          valB = Number(b.ingredients?.[0]?.stock_quantity ?? 0);
         } else {
           valA = String(valA).toLowerCase();
           valB = String(valB).toLowerCase();
@@ -177,7 +190,6 @@ export default function ProductsPage() {
       });
   }, [products, search, categoryId, sortBy, sortOrder]);
 
-  // --- Handlers ---
   const handleSort = (field) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -203,8 +215,8 @@ export default function ProductsPage() {
       id: null,
       name: "",
       category_id: categories.length > 0 ? String(categories[0].id) : "",
+      ingredients: [],
       price: "",
-      stock: "",
       description: "",
       image: null,
       image_preview: null,
@@ -213,15 +225,19 @@ export default function ProductsPage() {
   };
 
   const openEditModal = (product) => {
+    const existingIngredients = (product.ingredients || []).map((ing) => ({
+      ingredient_id: ing.id,
+      quantity_needed: ing.pivot?.quantity_needed ?? 0.01,
+    }));
     setForm({
       id: product.id,
       name: product.name,
       category_id: String(product.category_id),
+      ingredients: existingIngredients,
       price: product.price,
-      stock: product.stock,
       description: product.description || "",
       image: null,
-      image_preview: product.image ? getImageUrl(product.image) : null,
+      image_preview: product.image_url ? getImageUrl(product.image_url) : null,
     });
     setIsModalOpen(true);
   };
@@ -229,7 +245,7 @@ export default function ProductsPage() {
   const handleSave = async (e) => {
     e.preventDefault();
     
-    if (!form.name || !form.price || !form.stock || !form.category_id) {
+    if (!form.name || !form.price || !form.category_id) {
       showToast("Harap isi semua kolom wajib!", "error");
       return;
     }
@@ -237,8 +253,16 @@ export default function ProductsPage() {
     const formData = new FormData();
     formData.append("name", form.name);
     formData.append("category_id", form.category_id);
+    
+    // Kirim ingredients sebagai array sesuai format backend
+    if (form.ingredients.length > 0) {
+      form.ingredients.forEach((ing, index) => {
+        formData.append(`ingredients[${index}][ingredient_id]`, ing.ingredient_id);
+        formData.append(`ingredients[${index}][quantity_needed]`, ing.quantity_needed ?? 0.01);
+      });
+    }
+    
     formData.append("price", form.price);
-    formData.append("stock", form.stock);
     formData.append("description", form.description);
     if (form.image) {
       formData.append("image", form.image);
@@ -251,10 +275,19 @@ export default function ProductsPage() {
     }
 
     try {
+      // Saat upload file (FormData), jangan set Content-Type manual!
+      // Biarkan browser mengatur multipart/form-data dengan boundary-nya sendiri.
+      const token = localStorage.getItem("token");
+      const headers = {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
+        // JANGAN set "Content-Type" — browser akan mengaturnya otomatis untuk FormData
+      };
+
       const response = await fetch(url, {
-        method: "POST", // POST + _method agar Laravel file upload lancar
+        method: "POST",
         body: formData,
-        headers: getAuthHeaders() // Otomatis mengirim Bearer Token
+        headers
       });
 
       if (!response.ok) throw new Error("Gagal menyimpan data");
@@ -267,13 +300,11 @@ export default function ProductsPage() {
     }
   };
 
-  
-
   return (
     <div className="min-h-screen bg-stone-100 p-6">
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-lg transition-all transform translate-y-0 duration-300 ${
+        <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-lg transition-all duration-300 ${
           toast.type === "error" ? "bg-red-500 text-white" : "bg-emerald-600 text-white"
         }`}>
           {toast.type === "error" ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
@@ -298,7 +329,6 @@ export default function ProductsPage() {
 
       {/* Filter & Bar Pencarian */}
       <div className="bg-white/80 backdrop-blur-md border border-white p-5 rounded-3xl shadow-sm mb-6 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-        {/* Search */}
         <div className="md:col-span-5 relative">
           <label className="text-xs font-bold text-gray-500 block mb-2">Cari Produk</label>
           <div className="relative">
@@ -313,7 +343,6 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Dropdown Filter Kategori */}
         <div className="md:col-span-4">
           <label className="text-xs font-bold text-gray-500 block mb-2">Kategori</label>
           <select
@@ -329,7 +358,6 @@ export default function ProductsPage() {
           </select>
         </div>
 
-        {/* Sort By */}
         <div className="md:col-span-3">
           <label className="text-xs font-bold text-gray-500 block mb-2">Urutkan Berdasarkan</label>
           <div className="flex gap-2">
@@ -340,10 +368,10 @@ export default function ProductsPage() {
             >
               <option value="name">Nama Produk</option>
               <option value="price">Harga</option>
-              <option value="stock">Stok</option>
+              <option value="stock">Stok Bahan Baku</option>
             </select>
             <button
-              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              onClick={() => handleSort(sortBy)}
               className="h-11 w-11 flex items-center justify-center bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 transition-all active:scale-95"
             >
               <ArrowUpDown size={18} className="text-gray-600" />
@@ -352,7 +380,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Tabel Data / Loading State */}
+      {/* Tabel Data */}
       {loading ? (
         <div className="h-64 flex flex-col items-center justify-center gap-3 bg-white rounded-3xl border shadow-sm">
           <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
@@ -373,19 +401,24 @@ export default function ProductsPage() {
                   <th className="py-4 px-6">Produk</th>
                   <th className="py-4 px-6">Kategori</th>
                   <th className="py-4 px-6">Harga</th>
-                  <th className="py-4 px-6 text-center">Stok</th>
+                  <th className="py-4 px-6 text-center">Stok Bahan Baku</th>
                   <th className="py-4 px-6 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredProducts.map((p) => {
+                  const firstIngredient = p.ingredients?.[0];
+                  const stockQty = Number(firstIngredient?.stock_quantity ?? 0);
+                  const unit = firstIngredient?.unit || "pcs";
+                  const ingredientName = firstIngredient?.name;
+
                   return (
                     <tr key={p.id} className="hover:bg-gray-50/50 transition-all">
                       {/* Nama & Gambar */}
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-4">
                           <img
-                            src={getImageUrl(p.image)}
+                            src={getImageUrl(p.image_url)}
                             alt={p.name}
                             onError={(e) => { 
                               e.target.onerror = null; 
@@ -411,13 +444,22 @@ export default function ProductsPage() {
                           Rp {Number(p.price).toLocaleString("id-ID")}
                         </p>
                       </td>
-                      {/* Stok */}
+                      {/* Stok dari Ingredients */}
                       <td className="py-4 px-6 text-center">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                          p.stock > 10 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"
-                        }`}>
-                          {p.stock ?? 0} pcs
-                        </span>
+                        {firstIngredient ? (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                              stockQty > 10 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"
+                            }`}>
+                              {stockQty} {unit}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-medium truncate max-w-[120px]">
+                              ({ingredientName})
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Tanpa Bahan</span>
+                        )}
                       </td>
                       {/* Aksi */}
                       <td className="py-4 px-6 text-right">
@@ -458,7 +500,6 @@ export default function ProductsPage() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Header Modal */}
             <div className="flex justify-between items-center px-6 py-5 border-b border-gray-100">
               <h2 className="text-xl font-black text-gray-800">
                 {form.id ? "Edit Produk" : "Tambah Produk Baru"}
@@ -471,7 +512,6 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSave} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               {/* Gambar */}
               <div className="flex flex-col items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-dashed border-gray-200">
@@ -526,9 +566,8 @@ export default function ProductsPage() {
                 />
               </div>
 
-              {/* Grid Baris (Kategori & Harga) */}
+              {/* Kategori & Harga */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Kategori */}
                 <div>
                   <label className="text-xs font-bold text-gray-600 block mb-1.5">Kategori *</label>
                   <select
@@ -548,7 +587,6 @@ export default function ProductsPage() {
                   </select>
                 </div>
 
-                {/* Harga */}
                 <div>
                   <label className="text-xs font-bold text-gray-600 block mb-1.5">Harga (Rp) *</label>
                   <input
@@ -563,18 +601,27 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {/* Stok */}
+              {/* Dropdown Bahan Baku (Stok) */}
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1.5">Stok Awal *</label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  value={form.stock}
-                  onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
+                <label className="text-xs font-bold text-gray-600 block mb-1.5">Stok Bahan Baku Terhubung</label>
+                <select
+                  value={String(form.ingredients[0]?.ingredient_id ?? "")}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setForm((f) => ({
+                      ...f,
+                      ingredients: val ? [{ ingredient_id: Number(val), quantity_needed: 0.01 }] : [],
+                    }));
+                  }}
                   className="w-full h-11 px-4 rounded-2xl border border-gray-200 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
-                  placeholder="Contoh: 50"
-                />
+                >
+                  <option value="">-- Tanpa Bahan Baku --</option>
+                  {ingredientFormOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Deskripsi */}
@@ -613,7 +660,6 @@ export default function ProductsPage() {
       {isDetailOpen && selectedProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Header Detail */}
             <div className="flex justify-between items-center px-6 py-5 border-b border-gray-100">
               <h2 className="text-lg font-black text-gray-800">Detail Produk</h2>
               <button
@@ -624,10 +670,9 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            {/* Content */}
             <div className="p-6 space-y-5">
               <img
-                src={getImageUrl(selectedProduct.image)}
+                src={getImageUrl(selectedProduct.image_url)}
                 alt={selectedProduct.name}
                 onError={(e) => { 
                   e.target.onerror = null; 
@@ -648,8 +693,12 @@ export default function ProductsPage() {
                     </span>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-400">Stok</p>
-                    <p className="text-sm font-bold text-gray-800 mt-0.5">{selectedProduct.stock ?? 0} pcs</p>
+                    <p className="text-xs font-bold text-gray-400">Stok Bahan Baku</p>
+                    <p className="text-sm font-bold text-gray-800 mt-0.5">
+                      {selectedProduct.ingredients?.[0]
+                        ? `${selectedProduct.ingredients[0].stock_quantity ?? 0} ${selectedProduct.ingredients[0].unit || "pcs"}` 
+                        : "Tidak Terhubung"}
+                    </p>
                   </div>
                 </div>
                 <div>

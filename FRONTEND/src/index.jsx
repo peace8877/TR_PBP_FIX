@@ -5,6 +5,7 @@ import DashboardPage from "./DashboardPage";
 import DashboardHomePage from "./DashboardHomePage";
 import ProductsPage from "./ProductsPage";
 import CategoriesPage from "./CategoriesPage";
+import IngredientsPage from "./IngredientsPage"; 
 import TablesPage from "./TablesPage";
 import CustomersPage from "./CustomersPage";
 import TransactionsPage from "./TransactionsPage";
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardHomePage /> },
       { path: "products", element: <ProductsPage /> },
       { path: "categories", element: <CategoriesPage /> },
+      { path: "ingredients", element: <IngredientsPage /> }, // 👈 2. Tambahkan route bahan baku
       { path: "tables", element: <TablesPage /> },
       { path: "customers", element: <CustomersPage /> },
       { path: "transactions", element: <TransactionsPage /> },

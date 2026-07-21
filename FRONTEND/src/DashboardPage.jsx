@@ -10,8 +10,13 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const handleLogout = () => {
-    // placeholder logout
+  const handleLogout = async () => {
+    await fetch("http://127.0.0.1:8000/api/logout", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+    });
+    localStorage.removeItem("token");
+    localStorage.removeItem("auth");
     navigate("/login");
   };
 

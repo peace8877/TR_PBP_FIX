@@ -3,6 +3,10 @@
 function TransactionDetailModal({ open, onClose, transaction }) {
   if (!open) return null;
 
+  // Hitung persentase PPN dari subtotal dan tax_amount
+  const subtotal = Number(transaction?.subtotal || 0);
+  const taxAmount = Number(transaction?.tax_amount || 0);
+  const ppnRate = subtotal > 0 ? taxAmount / subtotal : 0.1;
 
   return (
     <div className="fixed inset-0 z-[120]">
@@ -13,7 +17,10 @@ function TransactionDetailModal({ open, onClose, transaction }) {
             <div>
               <h3 className="text-xl font-extrabold text-gray-900">Detail Transaksi</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Invoice: <span className="font-extrabold">{transaction?.invoice}</span>
+                Invoice:{" "}
+                <span className="font-extrabold">
+                  {transaction?.invoice_number ?? `INV-${transaction?.id}`}
+                </span>
               </p>
             </div>
             <button
@@ -29,11 +36,15 @@ function TransactionDetailModal({ open, onClose, transaction }) {
           <div className="mt-4 grid sm:grid-cols-2 gap-4">
             <div className="rounded-2xl bg-mokkaCream/40 border border-mokkaCoffee/10 p-4">
               <p className="text-xs font-bold text-gray-600">Nama Kasir</p>
-              <p className="font-extrabold text-gray-900 mt-1">{transaction?.cashierName}</p>
+              <p className="font-extrabold text-gray-900 mt-1">
+                {transaction?.user?.name || "Staf Umum"}
+              </p>
             </div>
             <div className="rounded-2xl bg-mokkaCream/40 border border-mokkaCoffee/10 p-4">
               <p className="text-xs font-bold text-gray-600">Metode Pembayaran</p>
-              <p className="font-extrabold text-gray-900 mt-1">{transaction?.paymentMethod}</p>
+              <p className="font-extrabold text-gray-900 mt-1">
+                {transaction?.payment_method || "-"}
+              </p>
             </div>
           </div>
 
@@ -48,13 +59,19 @@ function TransactionDetailModal({ open, onClose, transaction }) {
                 </tr>
               </thead>
               <tbody>
-                {(transaction?.items || []).map((it, idx) => (
+                {(transaction?.details || []).map((it, idx) => (
                   <tr key={idx} className="border-b border-white/50">
-                    <td className="px-4 py-4 font-bold text-gray-900">{it.name}</td>
-                    <td className="px-4 py-4 text-sm text-gray-700 font-extrabold">{it.qty}</td>
-                    <td className="px-4 py-4 text-sm text-gray-700">Rp {it.price.toLocaleString("id-ID")}</td>
+                    <td className="px-4 py-4 font-bold text-gray-900">
+                      {it.menu?.name || "Produk"}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-700 font-extrabold">
+                      {it.quantity}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-700">
+                      Rp {Number(it.price).toLocaleString("id-ID")}
+                    </td>
                     <td className="px-4 py-4 text-sm font-extrabold text-mokkaCoffee">
-                      Rp {it.subtotal.toLocaleString("id-ID")}
+                      Rp {Number(it.subtotal).toLocaleString("id-ID")}
                     </td>
                   </tr>
                 ))}
@@ -65,21 +82,25 @@ function TransactionDetailModal({ open, onClose, transaction }) {
                       <div className="w-full sm:w-[420px] rounded-2xl bg-white/60 border border-white/70 p-4">
                         <div className="flex items-center justify-between text-sm font-semibold">
                           <span>Subtotal</span>
-                          <span className="text-mokkaCoffee">Rp {transaction?.totals?.subtotal?.toLocaleString("id-ID")}</span>
+                          <span className="text-mokkaCoffee">
+                            Rp {subtotal.toLocaleString("id-ID")}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between text-sm font-semibold mt-2">
-                          <span>PPN ({Math.round((transaction?.ppnRate || 0) * 100)}%)</span>
-                          <span className="text-gray-900">Rp {transaction?.totals?.ppn?.toLocaleString("id-ID")}</span>
+                          <span>PPN ({Math.round(ppnRate * 100)}%)</span>
+                          <span className="text-gray-900">
+                            Rp {taxAmount.toLocaleString("id-ID")}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between text-sm font-semibold mt-2">
                           <span>Diskon</span>
-                          <span className="text-rose-600">- Rp {transaction?.totals?.discount?.toLocaleString("id-ID")}</span>
+                          <span className="text-rose-600">Rp 0</span>
                         </div>
                         <div className="border-t border-white/70 my-3" />
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-extrabold">Total</span>
                           <span className="text-lg font-extrabold text-mokkaCoffee">
-                            Rp {transaction?.totals?.grandTotal?.toLocaleString("id-ID")}
+                            Rp {Number(transaction?.total_amount || 0).toLocaleString("id-ID")}
                           </span>
                         </div>
                       </div>

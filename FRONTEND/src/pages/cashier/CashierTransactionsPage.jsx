@@ -37,13 +37,21 @@ const CashierTransactionsContent = () => {
   }, [transactions, query, dateFrom, dateTo]);
 
   const openDetail = (row) => {
-    setSelectedRow(row);
+    // Kirim data mentah (_raw) yang berisi details, subtotal, tax_amount, user, dll
+    setSelectedRow(row._raw || row);
     setDetailOpen(true);
   };
 
   return (
     <div className="flex gap-5">
-      <SidebarCashier onLogout={() => (window.location.href = "/login")} />
+      <SidebarCashier onLogout={async () => {
+          await fetch("http://127.0.0.1:8000/api/logout", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+          });
+          localStorage.clear();
+          window.location.href = "/login";
+        }} />
 
       <div className="flex-1 flex flex-col gap-4 min-w-0">
         <HeaderCashier />

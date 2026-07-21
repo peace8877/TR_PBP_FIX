@@ -42,8 +42,14 @@ const CashierDashboardPage = () => {
         ]);
         const catJson = await catRes.json();
         const prodJson = await prodRes.json();
+        const API_BASE = "http://127.0.0.1:8000";
         setCategories(Array.isArray(catJson?.data) ? catJson.data : []);
-        setProducts(Array.isArray(prodJson?.data) ? prodJson.data : []);
+        // Map API response: add `image` field with full storage URL for ProductCard
+        const mappedProducts = (Array.isArray(prodJson?.data) ? prodJson.data : []).map((p) => ({
+          ...p,
+          image: p.image_url ? `${API_BASE}/storage/${p.image_url}` : "https://placehold.co/200x200?text=No+Image",
+        }));
+        setProducts(mappedProducts);
       } catch (error) { console.error("Gagal mengambil data:", error); }
     };
     fetchData();
@@ -94,7 +100,14 @@ const CashierDashboardPage = () => {
     <div className="min-h-screen bg-mokkaCream">
       <div className="max-w-[1400px] mx-auto px-4 py-6">
         <div className="flex gap-5">
-          <SidebarCashier onLogout={() => { localStorage.clear(); navigate("/login"); }} />
+          <SidebarCashier onLogout={async () => {
+              await fetch("http://127.0.0.1:8000/api/logout", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+              });
+              localStorage.clear();
+              navigate("/login");
+            }} />
           <div className="flex-1 flex flex-col gap-4">
             <HeaderCashier />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

@@ -4,6 +4,7 @@ import {
   MdOutlineDashboard,
   MdOutlineShoppingBag,
   MdOutlineCategory,
+  MdOutlineKitchen, // 👈 Import Ikon untuk Bahan Baku/Dapur
   MdOutlineTableRestaurant,
   MdOutlinePeopleAlt,
   MdOutlineReceiptLong,
@@ -12,13 +13,14 @@ import {
   MdOutlineLogout,
 } from "react-icons/md";
 
-
 import logo from "../assets/logo.png";
 
 const menuItems = [
   { label: "Dashboard", icon: MdOutlineDashboard, to: "/dashboard" },
   { label: "Menu Produk", icon: MdOutlineShoppingBag, to: "/dashboard/products" },
   { label: "Kategori", icon: MdOutlineCategory, to: "/dashboard/categories" },
+  // 👇 Item Baru: Stok Bahan Baku
+  { label: "Bahan Baku", icon: MdOutlineKitchen, to: "/dashboard/ingredients" },
   // { label: "Meja", icon: MdOutlineTableRestaurant, to: "/dashboard/tables" },
   // { label: "Pelanggan", icon: MdOutlinePeopleAlt, to: "/dashboard/customers" },
   { label: "Laporan", icon: MdOutlineReceiptLong, to: "/dashboard/reports" },
@@ -54,7 +56,7 @@ function Sidebar({ isCollapsed = false, onLogout }) {
         </div>
       </div>
 
-      <nav className="flex-1 px-4 pb-4">
+      <nav className="flex-1 px-4 pb-4 overflow-y-auto">
         <div className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;

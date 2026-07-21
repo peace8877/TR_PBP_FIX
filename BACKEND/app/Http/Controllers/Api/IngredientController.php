@@ -22,18 +22,17 @@ class IngredientController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:ingredients,name',
+            'name'           => 'required|string|max:255',
             'stock_quantity' => 'required|numeric|min:0',
-            'unit' => 'required|string|max:50', // contoh: 'gram', 'ml', 'pcs'
-            'image_url' => 'nullable|string'
+            'unit'           => 'required|string|max:50',
         ]);
 
         $ingredient = Ingredient::create($validated);
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'Bahan baku berhasil ditambahkan',
-            'data' => $ingredient
+            'data'    => $ingredient
         ], 201);
     }
 
@@ -47,21 +46,20 @@ class IngredientController extends Controller
     }
 
     // Update stok atau info bahan baku (Admin)
-    public function update(Request $request, Ingredient $ingredient)
+   public function update(Request $request, Ingredient $ingredient)
     {
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255|unique:ingredients,name,' . $ingredient->id,
+            'name'           => 'sometimes|required|string|max:255',
             'stock_quantity' => 'sometimes|required|numeric|min:0',
-            'unit' => 'sometimes|required|string|max:50',
-            'image_url' => 'nullable|string'
+            'unit'           => 'sometimes|required|string|max:50',
         ]);
 
         $ingredient->update($validated);
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'Bahan baku berhasil diperbarui',
-            'data' => $ingredient
+            'data'    => $ingredient
         ], 200);
     }
 
